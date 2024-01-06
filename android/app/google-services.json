@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "997611983348",
+    "project_id": "testproject-37d1e",
+    "storage_bucket": "testproject-37d1e.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:997611983348:android:4e213359aa9a82cd99a9a1",
+        "android_client_info": {
+          "package_name": "com.kiranatest"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "997611983348-4tiqs73b6tjqsf1vcmii9hud11lsm8ca.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBCG7p7vlExIn1zz_REXEmGhgsRfsEXJ-E"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "997611983348-4tiqs73b6tjqsf1vcmii9hud11lsm8ca.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
