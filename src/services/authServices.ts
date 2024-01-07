@@ -5,16 +5,20 @@ import {UserData} from '../types/storeTypes';
 export const logInUser = async (email: string, password: string) => {
   let user = await auth().signInWithEmailAndPassword(email, password);
   if (user) {
-    let userSnapshot = await UserRef.orderByChild('email')
-      .equalTo(email)
-      .once('value');
-    if (userSnapshot.val()) {
-      let userData: UserData | undefined;
-      userSnapshot.forEach(child => {
-        userData = child.val();
-        return true;
-      });
-      return userData;
-    }
+    return await getUserDataByEmail(email);
+  }
+};
+
+export const getUserDataByEmail = async (email: string) => {
+  let userSnapshot = await UserRef.orderByChild('email')
+    .equalTo(email)
+    .once('value');
+  if (userSnapshot.val()) {
+    let userData: UserData | undefined;
+    userSnapshot.forEach(child => {
+      userData = child.val();
+      return true;
+    });
+    return userData;
   }
 };

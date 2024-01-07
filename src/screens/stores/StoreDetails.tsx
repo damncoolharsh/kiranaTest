@@ -7,11 +7,15 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import React, {useState} from 'react';
+import React, {useEffect, useState} from 'react';
 import AppText from '../../common/AppText';
 import {screenHeight, screenWidth} from '../../utils/measure';
-import {NavigationProp, RouteProp} from '@react-navigation/native';
-import {StoreItem} from './common/constants';
+import {
+  NavigationProp,
+  RouteProp,
+  useFocusEffect,
+} from '@react-navigation/native';
+import {FilterType, MENU_LIST, StoreItem, UploadItem} from './common/constants';
 import MatIcons from 'react-native-vector-icons/MaterialIcons';
 import AppButton from '../../common/AppButton';
 import AppModal from '../../common/AppModal';
@@ -20,6 +24,14 @@ import {
   launchCamera,
   launchImageLibrary,
 } from 'react-native-image-picker';
+import {fetchStoreData, storeImageData} from '../../services/storeServices';
+import {useAuthStore} from '../../store/authStore';
+import {useShopStore} from '../../store/shopStore';
+import {getItem} from '../../utils/helpers';
+import {UPLOAD_KEY} from '../../services/utils/constants';
+import AppDropdown from '../../common/AppDropdown';
+import AppLoading from '../../common/AppLoading';
+import auth from '@react-native-firebase/auth';
 
 type Props = {
   navigation: NavigationProp<any>;
@@ -29,14 +41,46 @@ type Props = {
 const SHOP_ITEM_HEIGHT = screenHeight * 0.5;
 const SHOP_ITEM_WIDTH = screenWidth * 0.8;
 export default function StoreDetails(props: Props) {
-  const storeData = props.route.params.storeData;
   const [imageModal, setImageModal] = useState(false);
+  const {shopList, selectedShop, setShopState} = useShopStore(state => state);
+  const userData = useAuthStore(state => state.userData);
+  const storeData = shopList[selectedShop];
+  const [loading, setLoading] = useState(false);
+  const setAuthState = useAuthStore(state => state.setAuthState);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      getInitialData();
+    }, []),
+  );
+
+  const getInitialData = async () => {
+    setLoading(true);
+    try {
+      if (!userData) return;
+      let storeData = await fetchStoreData(userData);
+      if (storeData) {
+        setShopState({shopList: storeData});
+      }
+    } catch (err) {
+      console.log('🚀 ~ file: Stores.tsx:50 ~ getInitialData ~ err:', err);
+    }
+    setLoading(false);
+  };
 
   const uploadImages = (imageData: ImagePickerResponse) => {
-    console.log(
-      '🚀 ~ file: StoreDetails.tsx:36 ~ StoreDetails ~ imageData:',
-      imageData,
-    );
+    if (imageData.assets && imageData.assets.length > 0) {
+      setImageModal(false);
+      storeImageData(storeData, imageData.assets[0]);
+
+      ToastAndroid.showWithGravityAndOffset(
+        'Upload started in background for ' + imageData.assets[0].fileName,
+        ToastAndroid.LONG,
+        ToastAndroid.TOP,
+        25,
+        50,
+      );
+    }
   };
 
   const onImageButtonClick = async (type: 'camera' | 'gallary') => {
@@ -58,6 +102,15 @@ export default function StoreDetails(props: Props) {
         err,
       );
       ToastAndroid.show(err.message, ToastAndroid.SHORT);
+    }
+  };
+
+  const onSelectMenuItem = async (item: FilterType) => {
+    if (item.id == 1) {
+      props.navigation.navigate('Uploads');
+    } else if (item.id == 2) {
+      await auth().signOut();
+      setAuthState({userData: null});
     }
   };
 
@@ -87,16 +140,30 @@ export default function StoreDetails(props: Props) {
 
   const _renderHeader = () => {
     return (
-      <View style={styles.toolsMain}>
-        <TouchableOpacity
-          style={styles.button}
-          onPress={() => props.navigation.goBack()}>
-          <MatIcons name="keyboard-arrow-left" size={24} color={'#000'} />
-        </TouchableOpacity>
-        <View>
-          <AppText fontSize={18} bold color="#000">
-            Stores Details
-          </AppText>
+      <View style={styles.toolsView}>
+        <View style={styles.toolsMain}>
+          <TouchableOpacity
+            style={styles.button}
+            onPress={() => props.navigation.goBack()}>
+            <MatIcons name="keyboard-arrow-left" size={24} color={'#000'} />
+          </TouchableOpacity>
+          <View>
+            <AppText fontSize={18} bold color="#000">
+              Stores Details
+            </AppText>
+          </View>
+        </View>
+        <View style={styles.toolButtons}>
+          <AppDropdown
+            data={MENU_LIST}
+            placecholder="Options"
+            style={{
+              ...styles.toolButton,
+              borderBottomColor: '#fff',
+            }}
+            onSelect={item => onSelectMenuItem(item)}>
+            <MatIcons name="more-vert" size={22} />
+          </AppDropdown>
         </View>
       </View>
     );
@@ -106,7 +173,7 @@ export default function StoreDetails(props: Props) {
     return (
       <View style={styles.imageView}>
         <FlatList
-          data={[{}, {}, {}]}
+          data={storeData.imageUrl || [{}]}
           horizontal
           bounces={false}
           showsHorizontalScrollIndicator={false}
@@ -115,8 +182,12 @@ export default function StoreDetails(props: Props) {
             return (
               <View style={styles.storeItem}>
                 <View style={styles.storeItemHead}>
-                  {storeData.imageUrl ? (
-                    <Image source={{uri: storeData.imageUrl}} />
+                  {storeData.imageUrl && storeData.imageUrl.length > 0 ? (
+                    <Image
+                      source={{uri: item}}
+                      style={styles.imageItem}
+                      resizeMode="cover"
+                    />
                   ) : (
                     <AppText fontSize={14} color="gray">
                       No Images
@@ -162,7 +233,7 @@ export default function StoreDetails(props: Props) {
   const _renderFooter = () => {
     return (
       <View style={styles.footer}>
-        <AppButton label="Upload Images" onPress={() => setImageModal(true)} />
+        <AppButton label="Upload Image" onPress={() => setImageModal(true)} />
       </View>
     );
   };
@@ -173,6 +244,7 @@ export default function StoreDetails(props: Props) {
       {_renderDetails()}
       {_renderFooter()}
       {_renderUploadImages()}
+      <AppLoading loading={loading} />
     </View>
   );
 }
@@ -184,12 +256,17 @@ const styles = StyleSheet.create({
   },
   // Tools View
   toolsMain: {
-    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  toolsView: {
+    height: screenHeight * 0.06,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     borderBottomWidth: 1,
     borderBottomColor: 'lightgray',
-    flexDirection: 'row',
-    height: screenHeight * 0.06,
-    alignItems: 'center',
+    paddingHorizontal: 16,
   },
   button: {
     paddingRight: 10,
@@ -210,6 +287,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#EBF1F3',
     borderRadius: 4,
+    overflow: 'hidden',
   },
   detailsView: {
     paddingHorizontal: 16,
@@ -238,5 +316,18 @@ const styles = StyleSheet.create({
   imageUploadView: {
     flexDirection: 'row',
     paddingHorizontal: 16,
+  },
+  imageItem: {
+    height: SHOP_ITEM_HEIGHT,
+    width: SHOP_ITEM_WIDTH,
+  },
+  toolButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  toolButton: {
+    marginLeft: 10,
+    borderBottomWidth: 2,
+    padding: 4,
   },
 });

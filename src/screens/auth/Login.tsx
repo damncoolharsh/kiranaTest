@@ -24,7 +24,6 @@ export default function Login({navigation}: Props) {
     try {
       if (emailRegex.test(email) && password.length > 3) {
         let userData = await logInUser(email, password);
-        console.log('🚀 ~ file: Login.tsx:27 ~ onSubmit ~ userData:', userData);
         if (userData) {
           setAuthState({userData: userData});
         }

@@ -9,19 +9,24 @@ import {
 import React, {useEffect, useState} from 'react';
 import {screenHeight, screenWidth} from '../../utils/measure';
 import AppText from '../../common/AppText';
-import {ShopItem} from '../../types/shopTypes';
 import MatIcons from 'react-native-vector-icons/MaterialIcons';
 import AppInput from '../../common/AppInput';
 import AppDropdown from '../../common/AppDropdown';
-import {NavigationProp} from '@react-navigation/native';
+import {NavigationProp, useFocusEffect} from '@react-navigation/native';
 import {
   FILTER_TYPE,
   FilterType,
   MENU_LIST,
   StoreItem,
+  UploadItem,
 } from './common/constants';
 import {fetchStoreData} from '../../services/storeServices';
 import {useAuthStore} from '../../store/authStore';
+import {useShopStore} from '../../store/shopStore';
+import {getItem} from '../../utils/helpers';
+import {UPLOAD_KEY} from '../../services/utils/constants';
+import AppLoading from '../../common/AppLoading';
+import auth from '@react-native-firebase/auth';
 
 type Props = {
   navigation: NavigationProp<any>;
@@ -33,32 +38,42 @@ const SHOP_ITEM_HEADER = SHOP_HEIGHT * 0.55;
 const SHOP_ITEM_FOOTER = SHOP_HEIGHT * 0.45;
 
 export default function Stores(props: Props) {
+  const {shopList, setShopState} = useShopStore(state => state);
   const [isSearch, setIsSearch] = useState(false);
   const [isFilter, setIsFilter] = useState(false);
   const [keyword, setKeyword] = useState('');
-  const [storeList, setStoreList] = useState<StoreItem[]>([]);
   const [filterType, setFilterType] = useState<FilterType>();
   const [filterValueList, setFitlerValueList] = useState<FilterType[]>([]);
   const [filterValue, setFilterValue] = useState<FilterType>();
   const userData = useAuthStore(state => state.userData);
+  const [loading, setLoading] = useState(false);
+  const setAuthState = useAuthStore(state => state.setAuthState);
 
-  useEffect(() => {
-    getInitialData();
-  }, []);
+  useFocusEffect(
+    React.useCallback(() => {
+      getInitialData();
+    }, []),
+  );
+
+  const getInitialData = async () => {
+    setLoading(true);
+    try {
+      if (!userData) return;
+      let storeData = await fetchStoreData(userData);
+      if (storeData) {
+        setShopState({shopList: storeData});
+      }
+    } catch (err) {
+      console.log('🚀 ~ file: Stores.tsx:50 ~ getInitialData ~ err:', err);
+    }
+    setLoading(false);
+  };
 
   const getFilteredList = () => {
-    let newList = [...storeList];
+    let newList = [...shopList];
     if (keyword.length > 0) {
-      console.log(
-        '🚀 ~ file: Stores.tsx:55 ~ getFilteredList ~ newList:',
-        newList.length,
-      );
-      newList = storeList.filter(item =>
+      newList = shopList.filter(item =>
         item.name.toLowerCase().includes(keyword.toLowerCase()),
-      );
-      console.log(
-        '🚀 ~ file: Stores.tsx:55 ~ getFilteredList ~ newList:',
-        newList.length,
       );
     }
     if (filterValue && filterType) {
@@ -81,20 +96,9 @@ export default function Stores(props: Props) {
     return newList;
   };
 
-  const getInitialData = async () => {
-    try {
-      if (!userData) return;
-      let storeData = await fetchStoreData(userData);
-      if (storeData) {
-        setStoreList(storeData);
-      }
-    } catch (err) {
-      console.log('🚀 ~ file: Stores.tsx:50 ~ getInitialData ~ err:', err);
-    }
-  };
-
-  const onPressItem = (item: ShopItem) => {
-    props.navigation.navigate('StoreDetails', {storeData: item});
+  const onPressItem = (index: number) => {
+    setShopState({selectedShop: index});
+    props.navigation.navigate('StoreDetails');
   };
 
   const onSelectFilterType = (item: FilterType) => {
@@ -112,7 +116,7 @@ export default function Stores(props: Props) {
         dataKey = 'route';
         break;
     }
-    storeList.map(item => {
+    shopList.map(item => {
       if (
         !newStoreList.some(
           val => val.label.toLowerCase() === item[dataKey].toLowerCase(),
@@ -129,9 +133,12 @@ export default function Stores(props: Props) {
     setFilterValue(undefined);
   };
 
-  const onSelectMenuItem = (item: FilterType) => {
+  const onSelectMenuItem = async (item: FilterType) => {
     if (item.id == 1) {
       props.navigation.navigate('Uploads');
+    } else if (item.id == 2) {
+      await auth().signOut();
+      setAuthState({userData: null});
     }
   };
 
@@ -225,10 +232,10 @@ export default function Stores(props: Props) {
     return (
       <TouchableOpacity
         style={{...styles.storeItemView}}
-        onPress={() => onPressItem(item)}>
+        onPress={() => onPressItem(index)}>
         <View style={styles.storeItemHead}>
           {item.imageUrl ? (
-            <Image source={{uri: item.imageUrl}} />
+            <Image source={{uri: item.imageUrl[0]}} style={styles.imageView} />
           ) : (
             <AppText fontSize={14} color="gray">
               No Images
@@ -252,7 +259,7 @@ export default function Stores(props: Props) {
     <View style={styles.container}>
       {_renderToolbar()}
       <View style={styles.main}>
-        {storeList.length > 0 ? (
+        {shopList.length > 0 ? (
           <FlatList
             columnWrapperStyle={styles.listWrapper}
             contentContainerStyle={styles.listView}
@@ -269,6 +276,7 @@ export default function Stores(props: Props) {
           </View>
         )}
       </View>
+      <AppLoading loading={loading} />
     </View>
   );
 }
@@ -303,6 +311,10 @@ const styles = StyleSheet.create({
     width: '100%',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  imageView: {
+    height: SHOP_ITEM_HEADER,
+    width: '100%',
   },
   storeItemFooter: {
     height: SHOP_ITEM_FOOTER,

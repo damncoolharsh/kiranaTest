@@ -1,16 +1,24 @@
 import {FlatList, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
-import React, {useState} from 'react';
+import React, {useEffect, useState} from 'react';
 import AppText from '../../common/AppText';
 import MatIcons from 'react-native-vector-icons/MaterialIcons';
 import {screenHeight} from '../../utils/measure';
 import {NavigationProp} from '@react-navigation/native';
-import {MOCK_UPLOAD, UploadItem} from './common/constants';
+import {MOCK_UPLOAD, UploadItem, UploadPending} from './common/constants';
+import {getItem} from '../../utils/helpers';
+import {UPLOAD_KEY, UPLOAD_QUEUE} from '../../services/utils/constants';
 
 type Props = {
   navigation: NavigationProp<any>;
 };
 export default function Uploads(props: Props) {
   const [uploads, setUploads] = useState<UploadItem[]>([]);
+  const [uploadPending, setUploadPending] = useState<UploadPending[]>([]);
+
+  useEffect(() => {
+    getItem(UPLOAD_KEY).then(result => setUploads(result));
+    getItem(UPLOAD_QUEUE).then(result => setUploadPending(result));
+  }, [uploads]);
 
   const _renderHeader = () => {
     return (
@@ -43,8 +51,27 @@ export default function Uploads(props: Props) {
           <View style={{...styles.progressLine, width: `${item.progress}%`}} />
         </View>
         <View style={styles.progressValues}>
-          <AppText>{item.progress}%</AppText>
-          <AppText>100%</AppText>
+          <AppText>{Math.round(item.progress)}%</AppText>
+        </View>
+      </View>
+    );
+  };
+
+  const renderPendingItem = ({
+    item,
+    index,
+  }: {
+    item: UploadPending;
+    index: number;
+  }) => {
+    return (
+      <View style={styles.uploadItem}>
+        <AppText fontSize={14}>{item.imageFile.fileName}</AppText>
+        <View style={styles.progressView}>
+          <View style={{...styles.progressLine, width: `0%`}} />
+        </View>
+        <View style={styles.progressValues}>
+          <AppText color="gray">Upload Pending</AppText>
         </View>
       </View>
     );
@@ -53,7 +80,7 @@ export default function Uploads(props: Props) {
   const _renderUploadItem = () => {
     return (
       <View>
-        {uploads.length > 0 ? (
+        {uploads.length > 0 || uploadPending?.length > 0 ? (
           <FlatList
             keyExtractor={(item, index) => `uploadItem_${index}`}
             data={uploads}
@@ -66,6 +93,11 @@ export default function Uploads(props: Props) {
             </AppText>
           </View>
         )}
+        <FlatList
+          keyExtractor={(item, index) => `uploadItemPending_${index}`}
+          data={uploadPending}
+          renderItem={renderPendingItem}
+        />
       </View>
     );
   };
@@ -113,7 +145,7 @@ const styles = StyleSheet.create({
   progressValues: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
     marginTop: 10,
   },
   noItems: {

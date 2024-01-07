@@ -1,14 +1,8 @@
-export type ShopState = {
-  shopList: ShopItem[];
-};
+import {StoreItem} from '../screens/stores/common/constants';
 
-export type ShopItem = {
-  address: string;
-  area: string;
-  name: string;
-  route: string;
-  type: string;
-  imageUrl?: string;
+export type ShopState = {
+  shopList: StoreItem[];
+  selectedShop: number;
 };
 
 export type ShopActions = {
