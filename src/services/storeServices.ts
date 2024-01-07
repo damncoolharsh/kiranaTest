@@ -104,9 +104,6 @@ const handleSuccess = async (
         let fileToUpload = uploadPending.splice(0, 1);
         await setItem(UPLOAD_QUEUE, uploadPending);
         storeImageData(storeData, fileToUpload[0].imageFile);
-      } else {
-        await BackgroundService.stop();
-        console.log('🚀 ~ file: storeServices.ts:110 ~ imageFile:-------');
       }
     }
   } catch (err: any) {
