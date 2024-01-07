@@ -80,7 +80,7 @@ export default function Uploads(props: Props) {
   const _renderUploadItem = () => {
     return (
       <View>
-        {uploads.length > 0 || uploadPending?.length > 0 ? (
+        {uploads?.length > 0 || uploadPending?.length > 0 ? (
           <FlatList
             keyExtractor={(item, index) => `uploadItem_${index}`}
             data={uploads}
