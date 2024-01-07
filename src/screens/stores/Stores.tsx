@@ -6,7 +6,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import React, {useState} from 'react';
+import React, {useEffect, useState} from 'react';
 import {screenHeight, screenWidth} from '../../utils/measure';
 import AppText from '../../common/AppText';
 import {ShopItem} from '../../types/shopTypes';
@@ -17,15 +17,17 @@ import {NavigationProp} from '@react-navigation/native';
 import {
   FILTER_TYPE,
   FilterType,
-  MOCK_DATA,
+  MENU_LIST,
   StoreItem,
 } from './common/constants';
+import {fetchStoreData} from '../../services/storeServices';
+import {useAuthStore} from '../../store/authStore';
 
 type Props = {
   navigation: NavigationProp<any>;
 };
 
-const SHOP_WIDTH = screenWidth * 0.42;
+const SHOP_WIDTH = screenWidth * 0.44;
 const SHOP_HEIGHT = SHOP_WIDTH * 1.3;
 const SHOP_ITEM_HEADER = SHOP_HEIGHT * 0.55;
 const SHOP_ITEM_FOOTER = SHOP_HEIGHT * 0.45;
@@ -34,9 +36,62 @@ export default function Stores(props: Props) {
   const [isSearch, setIsSearch] = useState(false);
   const [isFilter, setIsFilter] = useState(false);
   const [keyword, setKeyword] = useState('');
+  const [storeList, setStoreList] = useState<StoreItem[]>([]);
   const [filterType, setFilterType] = useState<FilterType>();
   const [filterValueList, setFitlerValueList] = useState<FilterType[]>([]);
-  const [filterValue, setFilterValue] = useState();
+  const [filterValue, setFilterValue] = useState<FilterType>();
+  const userData = useAuthStore(state => state.userData);
+
+  useEffect(() => {
+    getInitialData();
+  }, []);
+
+  const getFilteredList = () => {
+    let newList = [...storeList];
+    if (keyword.length > 0) {
+      console.log(
+        '🚀 ~ file: Stores.tsx:55 ~ getFilteredList ~ newList:',
+        newList.length,
+      );
+      newList = storeList.filter(item =>
+        item.name.toLowerCase().includes(keyword.toLowerCase()),
+      );
+      console.log(
+        '🚀 ~ file: Stores.tsx:55 ~ getFilteredList ~ newList:',
+        newList.length,
+      );
+    }
+    if (filterValue && filterType) {
+      let dataKey: 'area' | 'type' | 'route';
+      switch (filterType?.id) {
+        case 1:
+          dataKey = 'area';
+          break;
+        case 2:
+          dataKey = 'type';
+          break;
+        case 3:
+          dataKey = 'route';
+          break;
+      }
+      newList = newList.filter(
+        item => item[dataKey].toLowerCase() == filterValue.label.toLowerCase(),
+      );
+    }
+    return newList;
+  };
+
+  const getInitialData = async () => {
+    try {
+      if (!userData) return;
+      let storeData = await fetchStoreData(userData);
+      if (storeData) {
+        setStoreList(storeData);
+      }
+    } catch (err) {
+      console.log('🚀 ~ file: Stores.tsx:50 ~ getInitialData ~ err:', err);
+    }
+  };
 
   const onPressItem = (item: ShopItem) => {
     props.navigation.navigate('StoreDetails', {storeData: item});
@@ -57,7 +112,7 @@ export default function Stores(props: Props) {
         dataKey = 'route';
         break;
     }
-    MOCK_DATA.map(item => {
+    storeList.map(item => {
       if (
         !newStoreList.some(
           val => val.label.toLowerCase() === item[dataKey].toLowerCase(),
@@ -74,6 +129,12 @@ export default function Stores(props: Props) {
     setFilterValue(undefined);
   };
 
+  const onSelectMenuItem = (item: FilterType) => {
+    if (item.id == 1) {
+      props.navigation.navigate('Uploads');
+    }
+  };
+
   const _renderToolbar = () => {
     return (
       <View style={styles.toolsMain}>
@@ -83,7 +144,7 @@ export default function Stores(props: Props) {
           </AppText>
           <View style={styles.toolButtons}>
             <TouchableOpacity
-              onPress={() => setIsSearch(!isSearch)}
+              onPress={() => [setIsSearch(!isSearch), setKeyword('')]}
               style={{
                 ...styles.toolButton,
                 borderBottomColor: isSearch ? '#1212b5' : '#fff',
@@ -95,7 +156,11 @@ export default function Stores(props: Props) {
               />
             </TouchableOpacity>
             <TouchableOpacity
-              onPress={() => setIsFilter(!isFilter)}
+              onPress={() => [
+                setIsFilter(!isFilter),
+                setFilterType(undefined),
+                setFilterType(undefined),
+              ]}
               style={{
                 ...styles.toolButton,
                 borderBottomColor: isFilter ? '#1212b5' : '#fff',
@@ -106,6 +171,16 @@ export default function Stores(props: Props) {
                 color={isFilter ? '#1212b5' : undefined}
               />
             </TouchableOpacity>
+            <AppDropdown
+              data={MENU_LIST}
+              placecholder="Options"
+              style={{
+                ...styles.toolButton,
+                borderBottomColor: '#fff',
+              }}
+              onSelect={item => onSelectMenuItem(item)}>
+              <MatIcons name="more-vert" size={22} />
+            </AppDropdown>
           </View>
         </View>
         <View>
@@ -171,18 +246,28 @@ export default function Stores(props: Props) {
     );
   };
 
+  const filteredList = getFilteredList();
+
   return (
     <View style={styles.container}>
       {_renderToolbar()}
       <View style={styles.main}>
-        <FlatList
-          columnWrapperStyle={styles.listWrapper}
-          contentContainerStyle={styles.listView}
-          numColumns={2}
-          showsVerticalScrollIndicator={false}
-          data={MOCK_DATA}
-          renderItem={renderStoreItem}
-        />
+        {storeList.length > 0 ? (
+          <FlatList
+            columnWrapperStyle={styles.listWrapper}
+            contentContainerStyle={styles.listView}
+            numColumns={2}
+            showsVerticalScrollIndicator={false}
+            data={filteredList}
+            renderItem={renderStoreItem}
+          />
+        ) : (
+          <View style={styles.noData}>
+            <AppText color="gray" fontSize={14}>
+              No Stores Found
+            </AppText>
+          </View>
+        )}
       </View>
     </View>
   );
@@ -246,7 +331,6 @@ const styles = StyleSheet.create({
   toolButton: {
     marginLeft: 10,
     borderBottomWidth: 2,
-    borderBottomColor: '#1212b5',
     padding: 4,
   },
   inputStyle: {
@@ -264,5 +348,9 @@ const styles = StyleSheet.create({
   },
   dropdown: {
     width: screenWidth * 0.44,
+  },
+  noData: {
+    alignItems: 'center',
+    marginTop: 40,
   },
 });

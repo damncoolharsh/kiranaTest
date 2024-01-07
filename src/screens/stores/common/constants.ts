@@ -63,5 +63,13 @@ export const FILTER_TYPE = [
   {id: 2, label: 'Store Type'},
   {id: 3, label: 'Route'},
 ];
+
+export const MENU_LIST = [
+  {id: 1, label: 'Uploads'},
+  {id: 2, label: 'Logout'},
+];
+
+export const MOCK_UPLOAD = [{id: 1, fileName: 'abcd.png', progress: 10}];
 export type StoreItem = (typeof MOCK_DATA)[number];
 export type FilterType = (typeof FILTER_TYPE)[number];
+export type UploadItem = (typeof MOCK_UPLOAD)[number];

@@ -8,10 +8,12 @@ import {
   ViewProps,
 } from 'react-native';
 import React from 'react';
+import AppText from './AppText';
 
 type Props = {
   containerStyle?: StyleProp<any>;
   inputStyle?: StyleProp<any>;
+  error?: string;
 } & TextInputProps;
 
 export default function AppInput(props: Props) {
@@ -21,6 +23,13 @@ export default function AppInput(props: Props) {
         style={{...styles.inputStyle, ...props.inputStyle}}
         {...props}
       />
+      {!!props.error && (
+        <View>
+          <AppText paddingTop={8} paddingLeft={10} color="red" bold>
+            {props.error}
+          </AppText>
+        </View>
+      )}
     </View>
   );
 }

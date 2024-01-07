@@ -3,16 +3,23 @@ import {
   Image,
   StyleSheet,
   Text,
+  ToastAndroid,
   TouchableOpacity,
   View,
 } from 'react-native';
-import React from 'react';
+import React, {useState} from 'react';
 import AppText from '../../common/AppText';
 import {screenHeight, screenWidth} from '../../utils/measure';
 import {NavigationProp, RouteProp} from '@react-navigation/native';
 import {StoreItem} from './common/constants';
 import MatIcons from 'react-native-vector-icons/MaterialIcons';
 import AppButton from '../../common/AppButton';
+import AppModal from '../../common/AppModal';
+import {
+  ImagePickerResponse,
+  launchCamera,
+  launchImageLibrary,
+} from 'react-native-image-picker';
 
 type Props = {
   navigation: NavigationProp<any>;
@@ -23,6 +30,60 @@ const SHOP_ITEM_HEIGHT = screenHeight * 0.5;
 const SHOP_ITEM_WIDTH = screenWidth * 0.8;
 export default function StoreDetails(props: Props) {
   const storeData = props.route.params.storeData;
+  const [imageModal, setImageModal] = useState(false);
+
+  const uploadImages = (imageData: ImagePickerResponse) => {
+    console.log(
+      '🚀 ~ file: StoreDetails.tsx:36 ~ StoreDetails ~ imageData:',
+      imageData,
+    );
+  };
+
+  const onImageButtonClick = async (type: 'camera' | 'gallary') => {
+    try {
+      if (type == 'camera') {
+        let result = await launchCamera({mediaType: 'photo'});
+        if (result) {
+          uploadImages(result);
+        }
+      } else if (type == 'gallary') {
+        let result = await launchImageLibrary({mediaType: 'photo'});
+        if (result) {
+          uploadImages(result);
+        }
+      }
+    } catch (err: any) {
+      console.log(
+        '🚀 ~ file: StoreDetails.tsx:44 ~ onImageButtonClick ~ err:',
+        err,
+      );
+      ToastAndroid.show(err.message, ToastAndroid.SHORT);
+    }
+  };
+
+  const _renderUploadImages = () => {
+    return (
+      <AppModal
+        isVisible={imageModal}
+        modalHeading={'Select Images From'}
+        onClose={() => setImageModal(false)}>
+        <View style={styles.imageUploadView}>
+          <TouchableOpacity
+            style={{...styles.imageButton, marginRight: 16}}
+            onPress={() => onImageButtonClick('camera')}>
+            <MatIcons name="camera" size={20} />
+            <AppText>Camera</AppText>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.imageButton}
+            onPress={() => onImageButtonClick('gallary')}>
+            <MatIcons name="image" size={20} />
+            <AppText>Gallary</AppText>
+          </TouchableOpacity>
+        </View>
+      </AppModal>
+    );
+  };
 
   const _renderHeader = () => {
     return (
@@ -101,7 +162,7 @@ export default function StoreDetails(props: Props) {
   const _renderFooter = () => {
     return (
       <View style={styles.footer}>
-        <AppButton label="Upload Images" onPress={() => {}} />
+        <AppButton label="Upload Images" onPress={() => setImageModal(true)} />
       </View>
     );
   };
@@ -111,6 +172,7 @@ export default function StoreDetails(props: Props) {
       {_renderImages()}
       {_renderDetails()}
       {_renderFooter()}
+      {_renderUploadImages()}
     </View>
   );
 }
@@ -162,5 +224,19 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     paddingHorizontal: 24,
     paddingBottom: 16,
+  },
+  imageButton: {
+    paddingVertical: 10,
+    alignItems: 'center',
+    borderWidth: 2,
+    paddingHorizontal: 2,
+    width: screenWidth * 0.16,
+    borderRadius: 4,
+    marginVertical: 16,
+    borderColor: 'lightgray',
+  },
+  imageUploadView: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
   },
 });

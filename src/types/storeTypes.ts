@@ -5,6 +5,9 @@ export type AuthState = {
 export type UserData = {
   name: string;
   stores: string[];
+  email: string;
+  username: string;
+  error?: string;
 };
 
 export type AuthActions = {
